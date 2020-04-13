@@ -54,19 +54,10 @@ stages:
       
       # Inject envars from pipeline variables
     - bash: |
-        echo $AZURE_CLIENT_ID \
-        $AZURE_CLIENT_SECRET \
-        $AZURE_TENANT_ID \
-        $AZURE_SUBSCRIPTION_ID \
-        $AZURE_OPERATOR_KEYVAULT
+        sed 's/\[AZURE_CLIENT_ID\]/'$AZURE_CLIENT_ID'/' devops/Dockerfile > outdock
+        
 
-        sed 's/\[AZURE_CLIENT_ID\]/'$AZURE_CLIENT_ID'/' devops/Dockerfile > dockerfile
-        sed 's/\[AZURE_CLIENT_SECRET\]/'$AZURE_CLIENT_SECRET'/' dockerfile > dockerfile1
-        sed 's/\[AZURE_TENANT_ID\]/'$AZURE_TENANT_ID'/' dockerfile1 > dockerfile2
-        sed 's/\[AZURE_SUBSCRIPTION_ID\]/'$AZURE_SUBSCRIPTION_ID'/' dockerfile2 > dockerfile3
-        sed 's/\[AZURE_OPERATOR_KEYVAULT\]/'$AZURE_OPERATOR_KEYVAULT'/' dockerfile3 > dockerfile4
-
-        cat outdock4
+        cat outdock
       displayName: Setup container environment
       env:
         AZURE_CLIENT_SECRET: $(AZURE_CLIENT_SECRET)
