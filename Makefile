@@ -33,18 +33,36 @@ generate-test-certs:
 	mkdir -p /tmp/k8s-webhook-server/serving-certs
 	mv tls.* /tmp/k8s-webhook-server/serving-certs/
 
-# Run Controller tests against the configured cluster
-test-integration-controllers: generate fmt vet manifests
-	TEST_RESOURCE_PREFIX=$(TEST_RESOURCE_PREFIX) TEST_USE_EXISTING_CLUSTER=true REQUEUE_AFTER=20 \
-	go test -v -tags "$(BUILD_TAGS)" -coverprofile=reports/integration-controllers-coverage-output.txt -coverpkg=./... -covermode count -parallel 4 -timeout 45m \
-	./controllers/... 
-	#2>&1 | tee reports/integration-controllers-output.txt
-	#go-junit-report < reports/integration-controllers-output.txt > reports/integration-controllers-report.xml
+# Run API unittests
+api-test: generate fmt vet manifests
+	TEST_USE_EXISTING_CLUSTER=false go test -v -coverprofile=coverage.txt -covermode count ./api/...  2>&1 | tee testlogs.txt
+	go-junit-report < testlogs.txt  > report.xml
+	go tool cover -html=coverage.txt -o cover.html
 
-# Run Resource Manager tests against the configured cluster
-test-integration-managers: generate fmt vet manifests
-	TEST_USE_EXISTING_CLUSTER=true TEST_CONTROLLER_WITH_MOCKS=false REQUEUE_AFTER=20 \
-	go test -v -coverprofile=reports/integration-managers-coverage-ouput.txt -coverpkg=./... -covermode count -parallel 4 -timeout 45m \
+# Run tests
+test: generate fmt vet manifests 
+	TEST_USE_EXISTING_CLUSTER=false REQUEUE_AFTER=20 \
+	go test -tags "$(BUILD_TAGS)" -parallel 3 -v -coverprofile=coverage.txt -covermode count \
+	./api/... \
+	./controllers/... \
+	-timeout 10m 2>&1 | tee testlogs.txt
+	go-junit-report < testlogs.txt > report.xml
+	go tool cover -html=coverage.txt -o cover.html
+
+# Run tests with existing cluster
+test-existing-controllers: generate fmt vet manifests
+	TEST_RESOURCE_PREFIX=$(TEST_RESOURCE_PREFIX) TEST_USE_EXISTING_CLUSTER=true REQUEUE_AFTER=20 go test -tags "$(BUILD_TAGS)" -parallel 4 -v ./controllers/... -timeout 45m
+
+unit-tests:
+	go test -v \
+	./pkg/resourcemanager/keyvaults/unittest/ \
+	./pkg/helpers/
+
+
+# Run tests with existing cluster
+test-existing-managers: generate fmt vet manifests
+	TEST_USE_EXISTING_CLUSTER=true REQUEUE_AFTER=20 \
+	go test -v -coverprofile=coverage-existing.txt -covermode count \
 	./api/... \
 	./pkg/resourcemanager/eventhubs/...  \
 	./pkg/resourcemanager/resourcegroups/...  \
